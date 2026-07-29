@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
+﻿using System.Security.Claims;
 using Microsoft.EntityFrameworkCore;
 using TraineeManagement.api.CustomException;
 using TraineeManagement.api.Data;
@@ -75,6 +75,11 @@ namespace TraineeManagement.api.Services
 
             return new UserLoginResponse(jwtToken, Convert.ToInt32(expiry) * 60, new UserResponse(user.Id, user.UserName, user.Role));
 
+        }
+
+        public ClaimsPrincipal? ValidateToken(string token)
+        {
+            return JwtHelper.ValidateToken(token, _config);
         }
 
         public async Task<UserResponse> RegisterUser(CreateUserRequest newUser)
@@ -172,5 +177,13 @@ namespace TraineeManagement.api.Services
             }
         }
 
+        public async Task<UserResponse> GetUserById(int userId)
+        {
+            var user = await _context.Users.FindAsync(userId);
+
+            if(user == null) throw new InvalidRequest("You are unauthoried to access");
+
+            return UserModel.ToDto(user);
+        }
     }
 }

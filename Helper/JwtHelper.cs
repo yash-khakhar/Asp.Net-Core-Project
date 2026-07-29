@@ -1,5 +1,6 @@
 ﻿using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using TraineeManagement.api.Models;
@@ -31,8 +32,8 @@ namespace TraineeManagement.api.Helper
 
             var claims = new List<Claim>
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(JwtRegisteredClaimNames.Name, user.UserName),
+                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Name, user.UserName),
                 new Claim(ClaimTypes.Role, user.Role.ToString())
             };
 
@@ -50,6 +51,52 @@ namespace TraineeManagement.api.Helper
 
             return tokenHandler.CreateToken(tokenDescriptor);
 
+        }
+
+        public static ClaimsPrincipal? ValidateToken(string token, IConfiguration _config)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            var jwtSettings = _config.GetSection("JwtSettings");
+
+            if (jwtSettings == null) throw new Exception("Jwt is not configured!");
+
+            var secretKey = jwtSettings["SecretKey"];
+
+            var key = Encoding.UTF8.GetBytes(secretKey!);
+
+            var issuer = jwtSettings["Issuer"];
+
+            var audience = jwtSettings["Audience"];
+
+            try
+            {
+                var principal = tokenHandler.ValidateToken(
+                    token,
+                    new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidIssuer = issuer,
+
+                        ValidateAudience = true,
+                        ValidAudience = audience,
+
+                        ValidateIssuerSigningKey = true,
+                        IssuerSigningKey = new SymmetricSecurityKey(key),
+
+                        ValidateLifetime = true,
+
+                        ClockSkew = TimeSpan.Zero
+
+                    },
+                out _);
+
+                return principal;
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

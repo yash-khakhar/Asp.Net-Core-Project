@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Mvc;
 using TraineeManagement.api.CustomException;
 using TraineeManagement.api.DTO.UserDto;
 using TraineeManagement.api.Repository.User;
@@ -34,7 +35,7 @@ namespace TraineeManagement.api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<UserLoginResponse>> Login([FromBody] UserLoginRequestDto user)
+        public async Task<ActionResult<UserResponse>> Login([FromBody] UserLoginRequestDto user)
         {
             if (user == null)
             {
@@ -43,12 +44,71 @@ namespace TraineeManagement.api.Controllers
             }
 
             var userLoginResponse = await _userService.Login(user);
+            
+            Response.Cookies.Append(
+                "access_token", 
+                userLoginResponse.Token,
+                new CookieOptions
+                {
+                    HttpOnly = true,
+                    Secure = true,
+                    SameSite = SameSiteMode.Lax,
+                    Expires = DateTimeOffset.UtcNow.AddHours(1)
+                }
+            );
 
             _logger.LogInformation($"Login: {userLoginResponse.User.UserName} is logged in!!");
 
-            return userLoginResponse;
+            return Ok(userLoginResponse.User);
 
         }
 
+        [HttpGet("me")]
+        public async Task<ActionResult<UserResponse>> Me()
+        {
+            
+            var token = Request.Cookies["access_token"];
+            Console.WriteLine("Token: " + token);
+
+            if (String.IsNullOrEmpty(token))
+            {
+                return Unauthorized();
+            }
+
+            var principal = _userService.ValidateToken(token);
+            Console.WriteLine(principal);
+            
+            if(principal == null)
+            {
+                return Unauthorized();
+            }
+
+            var userId = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            Console.WriteLine("UserId: " + userId);
+
+            if (String.IsNullOrEmpty(userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _userService.GetUserById(int.Parse(userId));
+
+            if(user == null)
+            {
+                return Unauthorized();
+            }
+
+            return Ok(user);
+
+        }
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete("access_token");
+
+            return NoContent();
+        }
     }
 }
