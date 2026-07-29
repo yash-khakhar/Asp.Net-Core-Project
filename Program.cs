@@ -6,6 +6,7 @@ using Microsoft.IdentityModel.Tokens;
 using Polly;
 using Serilog;
 using Serilog.Formatting.Json;
+using StackExchange.Redis;
 using System.Text;
 using System.Text.Json.Serialization;
 using TraineeManagement.api.Data;
@@ -61,8 +62,8 @@ builder.Services.AddCors(options =>
             {
                 policy.WithOrigins("http://localhost:5173")
                     .AllowAnyHeader()
-                    .AllowCredentials()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             });
 });
 
@@ -76,6 +77,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
@@ -86,6 +88,19 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = jwtSettings["Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!))
     };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnMessageReceived = context =>
+        {
+            if(context.Request.Cookies.TryGetValue("access_token", out var token))
+            {
+                context.Token = token;
+            }
+            return Task.CompletedTask;
+        }
+    };
+
 });
 
 builder.Services.AddControllers()
@@ -134,6 +149,9 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.Configuration = redisConnectionString;
     options.InstanceName = "Dev:";
 });
+
+builder.Services.AddSingleton<IConnectionMultiplexer>(sp =>
+    ConnectionMultiplexer.Connect(redisConnectionString));
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<CorrelationIdHandler>();
@@ -190,6 +208,12 @@ var app = builder.Build();
 
 app.UseSerilogRequestLogging();
 
+app.UseRouting();
+
+app.UseCors(myAllowSpecificOrigins);
+
+app.UseHttpsRedirection();
+
 app.UseMiddleware<GlobalExceptionHandler>();
 
 //app.UseExceptionHandler();
@@ -201,12 +225,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUi();
 }
 
-
-app.UseHttpsRedirection();
-app.UseRouting();
-app.UseCors(myAllowSpecificOrigins);
-
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();

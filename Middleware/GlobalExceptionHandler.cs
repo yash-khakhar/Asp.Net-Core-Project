@@ -117,7 +117,7 @@ namespace TraineeManagement.api.Middleware
             {
                 _logger.LogError(ex, "An exception escaped the pipeline: {Message}", ex.Message);
 
-                await WriteErrorResponse(context, "Internal Server Error", StatusCodes.Status500InternalServerError, ex.Message);
+                await WriteErrorResponse(context, "Internal Server Error", StatusCodes.Status500InternalServerError, "Internal Server Error");
             }
         }
 

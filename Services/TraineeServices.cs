@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TraineeManagement.api.CustomException;
 using TraineeManagement.api.Data;
 using TraineeManagement.api.DTO.TraineeDto;
@@ -62,20 +61,20 @@ namespace TraineeManagement.api.Services
 
 
             TraineeModel traineeModel = new TraineeModel(
-                    trainee.FirstName.ToLower(), 
-                    trainee.LastName.ToLower(), 
-                    trainee.Email.ToLower(), 
-                    trainee.TechStack.ToLower(), 
+                    trainee.FirstName.ToLower(),
+                    trainee.LastName.ToLower(),
+                    trainee.Email.ToLower(),
+                    trainee.TechStack.ToLower(),
                     trainee.Status
                 );
             traineeModel.CreatedAt = DateTime.UtcNow;
             traineeModel.UpdatedAt = DateTime.UtcNow;
-            
+
             _context.Trainees.Add(traineeModel);
             await _context.SaveChangesAsync();
 
             // removing all trainee key from cache
-            await _redisCacheRepo.RemoveItem(TraineeCacheKey.AllTrainees);
+            await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
 
             return TraineeModel.ToDto(traineeModel);
         }
@@ -83,15 +82,15 @@ namespace TraineeManagement.api.Services
         public async Task<bool> DeleteTraineeById(int id)
         {
             TraineeModel? trainee = await _context.Trainees.FindAsync(id);
-            
+
             if (trainee == null) return false;
-            
+
             _context.Trainees.Remove(trainee);
-            
+
             await _context.SaveChangesAsync();
 
             // removing all trainee key from cache
-            await _redisCacheRepo.RemoveItem(TraineeCacheKey.AllTrainees);
+            await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
             await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.SingleTrainee}:{id}");
 
             return true;
@@ -128,47 +127,10 @@ namespace TraineeManagement.api.Services
                 {
 
                     await _redisCacheRepo.SetItem<TraineeResponse>(cacheKey, trainee);
-                
+
                     return trainee;
 
                 }
-
-            }
-            
-        }
-
-        public async Task<IEnumerable<TraineeResponse>> GetTraineeList()
-        {
-
-            string cacheKey = TraineeCacheKey.AllTrainees;
-
-            IEnumerable<TraineeResponse>? cachedData = await _redisCacheRepo.GetItem<IEnumerable<TraineeResponse>>(cacheKey);
-
-            if(cachedData != null)
-            {
-
-                _logger.LogInformation(
-                   "Trainee List found in Redis cache using key {RedisKey}.",
-                   cacheKey
-               );
-
-                return cachedData;
-            }
-            else
-            {
-
-                _logger.LogInformation(
-                   "Trainee List not found in Redis cache using key {RedisKey}. Falling back to MySQL DB to fetch.",
-                   cacheKey
-               );
-
-                var traineeList = await _context.Trainees
-                .Select(p => new TraineeResponse(p.Id, p.FirstName, p.LastName, p.Email, p.TechStack, p.Status, p.CreatedAt, p.UpdatedAt))
-                .ToListAsync();
-
-                await _redisCacheRepo.SetItem<IEnumerable<TraineeResponse>>(cacheKey, traineeList);
-
-                return traineeList;
 
             }
 
@@ -228,87 +190,69 @@ namespace TraineeManagement.api.Services
 
             await _context.SaveChangesAsync();
 
-            // removing all trainee key from cache
-            await _redisCacheRepo.RemoveItem(TraineeCacheKey.AllTrainees);
+            await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
             await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.SingleTrainee}:{updateTraineeRequest.Id}");
 
             return TraineeModel.ToDto(trainee);
         }
 
-        public async Task<IEnumerable<TraineeResponse>> SearchTrainee(string searchKeyword)
+        public async Task<TraineeSearchResultDto> GetTraineesAsync(int pageNumber, int pageSize, string? search, TraineeStatusEnum? status)
         {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
 
-            string cacheKey = $"{TraineeCacheKey.TraineeSearch}:${searchKeyword}";
+            string cacheKey = $"{TraineeCacheKey.AllTrainees}:p{pageNumber}_s{pageSize}_q{search ?? "all"}_st{status?.ToString() ?? "all"}";
 
-            IEnumerable<TraineeResponse>? cachedData = await _redisCacheRepo.GetItem<IEnumerable<TraineeResponse>>(cacheKey);
-
-            if(cachedData != null)
+            var cachedData = await _redisCacheRepo.GetItem<TraineeSearchResultDto>(cacheKey);
+            if (cachedData != null)
             {
+                _logger.LogInformation("Trainee search/list found in Redis cache using key {RedisKey}.", cacheKey);
                 return cachedData;
             }
-            else
+
+            _logger.LogInformation("Trainee search/list not found in Redis. Falling back to DB.");
+
+            var query = _context.Trainees.AsQueryable();
+
+            if (status.HasValue)
             {
-
-                var traineeList = await _context.Trainees
-                    .Where(
-                        trainee => trainee.FirstName.Contains(searchKeyword) || 
-                        trainee.LastName.Contains(searchKeyword) || 
-                        trainee.Email.Contains(searchKeyword) || 
-                        trainee.TechStack.Contains(searchKeyword
-                    ))
-                    .Select(trainee => 
-                        new TraineeResponse(
-                            trainee.Id, 
-                            trainee.FirstName, 
-                            trainee.LastName, 
-                            trainee.Email, 
-                            trainee.TechStack,
-                            trainee.Status ?? TraineeStatusEnum.ACTIVE,
-                            trainee.CreatedAt,
-                            trainee.UpdatedAt
-                         ))
-                    .ToListAsync();
-
-
-                await _redisCacheRepo.SetItem<IEnumerable<TraineeResponse>>(cacheKey, traineeList);
-
-                return traineeList;
-
+                query = query.Where(t => t.Status == status.Value);
             }
 
-        }
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                string lowerSearch = search.ToLower();
+                query = query.Where(t =>
+                    t.FirstName.ToLower().Contains(lowerSearch) ||
+                    t.LastName.ToLower().Contains(lowerSearch) ||
+                    t.Email.ToLower().Contains(lowerSearch) ||
+                    t.TechStack.ToLower().Contains(lowerSearch)
+                );
+            }
 
-        public async Task<TraineeSearchResultDto> SearchWithPagination(int pageNumber, int pageSize, string search, TraineeStatusEnum role)
-        {
+            int totalRecords = await query.CountAsync();
+            int skip = (pageNumber - 1) * pageSize;
 
-            int totalRecords = await _context.Trainees.CountAsync();
-
-            int totalPages = (totalRecords + pageSize - 1) / pageSize;
-
-            int skip = pageSize * pageNumber - pageSize;
-
-            var traineeList = await _context.Trainees
-                .Where(
-                    trainee => trainee.FirstName.Contains(search) &&
-                    trainee.Status.Equals(role)
-                )
+            var traineeList = await query
                 .Skip(skip)
                 .Take(pageSize)
-                .Select(trainee =>
-                    new TraineeResponse(
-                        trainee.Id,
-                        trainee.FirstName,
-                        trainee.LastName,
-                        trainee.Email,
-                        trainee.TechStack,
-                        trainee.Status ?? TraineeStatusEnum.ACTIVE,
-                        trainee.CreatedAt,
-                        trainee.UpdatedAt
-                        )
-                ).ToListAsync();
+                .Select(p => new TraineeResponse(
+                    p.Id,
+                    p.FirstName,
+                    p.LastName,
+                    p.Email,
+                    p.TechStack,
+                    p.Status ?? TraineeStatusEnum.ACTIVE,
+                    p.CreatedAt,
+                    p.UpdatedAt
+                ))
+                .ToListAsync();
 
-            return new TraineeSearchResultDto(pageNumber, pageSize, totalRecords, traineeList);
+            var result = new TraineeSearchResultDto(pageNumber, pageSize, totalRecords, traineeList);
 
+            await _redisCacheRepo.SetItem(cacheKey, result);
+
+            return result;
         }
     }
 }

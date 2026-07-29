@@ -7,6 +7,7 @@
         Task<T?> GetItem<T>(string cacheKey);
 
         Task RemoveItem(string key);
+        Task RemoveByPatternAsync(string pattern);
 
     }
 }

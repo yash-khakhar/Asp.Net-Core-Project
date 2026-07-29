@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 using System.Text.Json;
 using TraineeManagement.api.Redis.Repository;
 
@@ -9,12 +10,19 @@ namespace TraineeManagement.api.Redis.Service
         
         private readonly IDistributedCache _cache;
         private readonly ILogger<RedisCacheService> _logger;
+        private readonly IConnectionMultiplexer _redisConnection;
 
-        public RedisCacheService(IDistributedCache cache, ILogger<RedisCacheService> logger)
+        public RedisCacheService(
+            IDistributedCache cache, 
+            ILogger<RedisCacheService> logger,
+            IConnectionMultiplexer redisConnection
+        )
         {
             _cache = cache;
 
             _logger = logger;
+
+            _redisConnection = redisConnection;
         }
 
         public async Task<T?> GetItem<T>(string cacheKey)
@@ -34,8 +42,6 @@ namespace TraineeManagement.api.Redis.Service
                 return default;
             }
 
-            // Deserializing OUTSIDE the try-catch for Redis, 
-            // so a bad JSON payload doesn't falsely report a Redis outage.
             try
             {
                 return JsonSerializer.Deserialize<T>(cachedData);
@@ -46,6 +52,27 @@ namespace TraineeManagement.api.Redis.Service
                 return default;
             }
 
+        }
+
+        public async Task RemoveByPatternAsync(string pattern)
+        {
+            try
+            {
+                var endpoints = _redisConnection.GetEndPoints();
+                if (endpoints.Length == 0) return;
+
+                var server = _redisConnection.GetServer(endpoints.First());
+                var db = _redisConnection.GetDatabase();
+                
+                foreach (var key in server.Keys(pattern: pattern))
+                {
+                    await db.KeyDeleteAsync(key);
+                }
+                
+            }catch(Exception ex)
+            {
+                _logger.LogWarning(ex, "Redis error while removing keys by pattern '{Pattern}'.", pattern);
+            }
         }
 
         public async Task RemoveItem(string key)

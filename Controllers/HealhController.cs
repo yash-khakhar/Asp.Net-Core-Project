@@ -71,6 +71,7 @@ namespace TraineeManagement.api.Controllers
                 return Ok(response);
             }
 
+            // If even ONE dependency fails, the overall status becomes Unhealthy
             return StatusCode(StatusCodes.Status503ServiceUnavailable, response);
         }
     }

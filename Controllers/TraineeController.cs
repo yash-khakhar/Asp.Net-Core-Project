@@ -26,34 +26,22 @@ namespace TraineeManagement.api.Controllers
         }
 
         [HttpGet]
-        
+        [Authorize(Roles = $"{nameof(UserRolesEnum.ADMIN)}, {nameof(UserRolesEnum.TRAINEE)}")]
         public async Task<IActionResult> ListAllTrainee(
-            [FromQuery(Name = "pageNumber")] int pageNumber = 0,
-            [FromQuery(Name = "pageSize")] int pageSize = 0,
+            [FromQuery(Name = "pageNumber")] int pageNumber = 1,
+            [FromQuery(Name = "pageSize")] int pageSize = 10,
             [FromQuery(Name = "search")] string? search = null,
-            [FromQuery(Name = "status")] TraineeStatusEnum status = TraineeStatusEnum.ACTIVE
+            [FromQuery(Name = "status")] TraineeStatusEnum? status = null
         )
         {
-            if (search != null && pageNumber != 0 && pageSize != 0)
-            {
-                TraineeSearchResultDto traineeSearchResultDto = await _traineeServices.SearchWithPagination(pageNumber, pageSize, search.ToLower(), status);
 
-                return Ok(traineeSearchResultDto);
+            var result = await _traineeServices.GetTraineesAsync(pageNumber, pageSize, search, status);
+            return Ok(result);
 
-            }
-            else if (search != null)
-            {
-                return Ok(await _traineeServices.SearchTrainee(search.ToLower()));
-            }
-            else
-            {
-                return Ok(await _traineeServices.GetTraineeList());
-            }
-
-        }
+        }   
 
         [HttpGet("{id}", Name = "GetTraineeById")]
-        
+        [Authorize(Roles = $"{nameof(UserRolesEnum.ADMIN)}, {nameof(UserRolesEnum.TRAINEE)}")]
         public async Task<ActionResult<TraineeResponse>> GetTraineeById(int id)
         {
             TraineeResponse trainee = await _traineeServices.GetTraineeById(id);

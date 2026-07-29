@@ -30,12 +30,20 @@ namespace TraineeManagement.api.Helper
 
             if (issuer == null || audience == null || expiry == null || secretKey == null) throw new Exception("Jwt is not configured");
 
+            // var claims = new List<Claim>
+            // {
+            //     new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+            //     new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Name, user.UserName),
+            //     new Claim(ClaimTypes.Role, user.Role.ToString())
+            // };
+
             var claims = new List<Claim>
             {
-                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-                new Claim(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Name, user.UserName),
+                new Claim(Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new Claim(Microsoft.IdentityModel.JsonWebTokens.JwtRegisteredClaimNames.Name, user.UserName),
                 new Claim(ClaimTypes.Role, user.Role.ToString())
             };
+
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
