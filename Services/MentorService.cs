@@ -2,6 +2,7 @@
 using TraineeManagement.api.CustomException;
 using TraineeManagement.api.Data;
 using TraineeManagement.api.DTO.MentorDto;
+using TraineeManagement.api.Enum.Mentor;
 using TraineeManagement.api.Helper;
 using TraineeManagement.api.Models;
 using TraineeManagement.api.Repository.Mentor;
@@ -143,5 +144,52 @@ namespace TraineeManagement.api.Services
 
             return MentorModel.ToDto(mentor);
         }
+
+        public async Task<MentorSearchResultDto> GetMentorAsync(int pageNumber, int pageSize, string? search, MentorStatusEnum? status)
+        {
+            if (pageNumber <= 0) pageNumber = 1;
+            if (pageSize <= 0) pageSize = 10;
+
+            var query = _context.Mentor.AsQueryable();
+
+            if (status.HasValue)
+            {
+                query = query.Where(t => t.Status == status.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(search))
+            {
+                string lowerSearch = search.ToLower();
+                query = query.Where(t =>
+                    t.FirstName.ToLower().Contains(lowerSearch) ||
+                    t.LastName.ToLower().Contains(lowerSearch) ||
+                    t.Email.ToLower().Contains(lowerSearch) ||
+                    t.Expertise.ToLower().Contains(lowerSearch)
+                );
+            }
+
+            int totalRecords = await query.CountAsync();
+            int skip = (pageNumber - 1) * pageSize;
+
+            var mentorList = await query
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(p => new MentorResponse(
+                    p.Id,
+                    p.FirstName,
+                    p.LastName,
+                    p.Email,
+                    p.Expertise,
+                    p.Status,
+                    p.CreatedAt,
+                    p.UpdatedAt
+                ))
+                .ToListAsync();
+
+            var result = new MentorSearchResultDto(pageNumber, pageSize, totalRecords, mentorList);
+
+            return result;
+        }
+
     }
 }

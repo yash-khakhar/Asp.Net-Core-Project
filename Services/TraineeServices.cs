@@ -143,7 +143,7 @@ namespace TraineeManagement.api.Services
             if (updateTraineeRequest.FirstName != null)
             {
 
-                if (!trainee.FirstName.IsOnlyLetters())
+                if (!updateTraineeRequest.FirstName.IsOnlyLetters())
                 {
                     throw new InvalidRequest("Enter Proper FirstName");
                 }
@@ -154,7 +154,7 @@ namespace TraineeManagement.api.Services
             if (updateTraineeRequest.LastName != null)
             {
 
-                if (!trainee.LastName.IsOnlyLetters())
+                if (!updateTraineeRequest.LastName.IsOnlyLetters())
                 {
                     throw new InvalidRequest("Enter Proper LastName");
                 }
@@ -165,7 +165,7 @@ namespace TraineeManagement.api.Services
             if (updateTraineeRequest.Email != null)
             {
 
-                if (!trainee.Email.IsValidEmail())
+                if (!updateTraineeRequest.Email.IsValidEmail())
                 {
                     throw new InvalidRequest("Enter Proper Email Address");
                 }
@@ -178,7 +178,9 @@ namespace TraineeManagement.api.Services
             if (updateTraineeRequest.TechStack != null)
             {
 
-                if (!trainee.TechStack.IsOnlyLetters())
+                Console.WriteLine("Tech Stack: " + updateTraineeRequest.TechStack);
+                
+                if (!updateTraineeRequest.TechStack.IsOnlyLetters())
                 {
                     throw new InvalidRequest("Enter Proper Tech Stack");
                 }

@@ -8,9 +8,9 @@ using TraineeManagement.api.Enum.Mentor;
 using TraineeManagement.api.Helper;
 using TraineeManagement.api.models;
 using TraineeManagement.api.Models;
-using TraineeManagement.api.Repository.Mentor;
+using TraineeManagement.api.Redis.CacheKeys;
+using TraineeManagement.api.Redis.Repository;
 using TraineeManagement.api.Repository.Password;
-using TraineeManagement.api.Repository.Trainee;
 using TraineeManagement.api.Repository.User;
 
 namespace TraineeManagement.api.Services
@@ -21,22 +21,21 @@ namespace TraineeManagement.api.Services
         private AppDbContext _context;
         private IPasswordService _passwordService;
         private readonly IConfiguration _config;
-        private ITraineeService _traineeService;
-        private IMentorService _mentorService;
+
+        private readonly IRedisCacheRepo _redisCacheRepo;
 
         public UserService(
             AppDbContext context, 
             IPasswordService passwordService, 
             IConfiguration config,
-            ITraineeService traineeService,
-            IMentorService mentorService
+            IRedisCacheRepo redisCacheRepo
         )
         {
             _context = context;
             _passwordService = passwordService;
             _config = config;
-            _traineeService = traineeService;
-            _mentorService = mentorService;
+            _redisCacheRepo = redisCacheRepo;
+           
         }
 
         private async Task<UserModel> FindByUsername(string userName)
@@ -146,6 +145,8 @@ namespace TraineeManagement.api.Services
                         );
 
                         _context.Trainees.Add(trainee);
+                        // remove from redis if user is trainee
+                        await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
                        
                         break;
 

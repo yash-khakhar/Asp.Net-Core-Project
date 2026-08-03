@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TraineeManagement.api.DTO.MentorDto;
 using TraineeManagement.api.Enum;
+using TraineeManagement.api.Enum.Mentor;
 using TraineeManagement.api.Repository.Mentor;
 
 namespace TraineeManagement.api.Controllers
@@ -20,9 +21,14 @@ namespace TraineeManagement.api.Controllers
 
         [HttpGet]
         [Authorize(Roles = $"{nameof(UserRolesEnum.ADMIN)}")]
-        public async Task<IActionResult> GetAllMentor()
+        public async Task<IActionResult> GetAllMentor(
+            [FromQuery(Name = "pageNumber")] int pageNumber = 1,
+            [FromQuery(Name = "pageSize")] int pageSize = 10,
+            [FromQuery(Name = "search")] string? search = null,
+            [FromQuery(Name = "status")] MentorStatusEnum? status = null
+        )
         {
-            IEnumerable<MentorResponse> mentorList = await _mentorService.GetMentorList();
+            MentorSearchResultDto mentorList = await _mentorService.GetMentorAsync(pageNumber, pageSize, search, status);
             return Ok(mentorList);
         }
 
