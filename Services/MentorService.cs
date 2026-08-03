@@ -95,7 +95,7 @@ namespace TraineeManagement.api.Services
             if (updateMentorRequest.FirstName != null)
             {
 
-                if (!mentor.FirstName.IsOnlyLetters())
+                if (!updateMentorRequest.FirstName.IsOnlyLetters())
                 {
                     throw new InvalidRequest("Enter Proper FirstName");
                 }
@@ -106,7 +106,7 @@ namespace TraineeManagement.api.Services
             if (updateMentorRequest.LastName != null)
             {
 
-                if (!mentor.LastName.IsOnlyLetters())
+                if (!updateMentorRequest.LastName.IsOnlyLetters())
                 {
                     throw new InvalidRequest("Enter Proper LastName");
                 }
@@ -117,7 +117,7 @@ namespace TraineeManagement.api.Services
             if (updateMentorRequest.Email != null)
             {
 
-                if (!mentor.Email.IsValidEmail())
+                if (!updateMentorRequest.Email.IsValidEmail())
                 {
                     throw new InvalidRequest("Enter Proper Email Address");
                 }
@@ -129,11 +129,6 @@ namespace TraineeManagement.api.Services
 
             if (updateMentorRequest.Expertise != null)
             {
-
-                if (!mentor.Expertise.IsOnlyLetters())
-                {
-                    throw new InvalidRequest("Enter Proper Expertise");
-                }
 
                 mentor.Expertise = updateMentorRequest.Expertise;
             }

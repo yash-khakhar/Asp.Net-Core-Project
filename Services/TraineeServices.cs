@@ -173,18 +173,11 @@ namespace TraineeManagement.api.Services
                 trainee.Email = updateTraineeRequest.Email;
             }
 
-            trainee.Status = (TraineeStatusEnum)updateTraineeRequest.Status;
+            trainee.Status = updateTraineeRequest.Status;
 
             if (updateTraineeRequest.TechStack != null)
             {
-
-                Console.WriteLine("Tech Stack: " + updateTraineeRequest.TechStack);
                 
-                if (!updateTraineeRequest.TechStack.IsOnlyLetters())
-                {
-                    throw new InvalidRequest("Enter Proper Tech Stack");
-                }
-
                 trainee.TechStack = updateTraineeRequest.TechStack;
             }
 
