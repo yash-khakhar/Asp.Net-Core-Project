@@ -84,9 +84,9 @@ namespace TraineeManagement.api.Services
             if (taskRequest.Title != null)
             {
                 
-                if (!task.Title.IsOnlyLetters())
+                if (!taskRequest.Title.All(char.IsLetterOrDigit))
                 {
-                    throw new InvalidRequest("Enter Proper Task Title");
+                    throw new InvalidRequest("Task title should contain only Alpha-Numeric Characters");
                 }
 
                 task.Title = taskRequest.Title;
@@ -96,11 +96,6 @@ namespace TraineeManagement.api.Services
 
             if (taskRequest.ExpectedTechStack != null)
             {
-                if (!task.ExpectedTechStack.IsOnlyLetters())
-                {
-                    throw new InvalidRequest("Enter Proper Tech Stack");
-                }
-
                 task.ExpectedTechStack = taskRequest.ExpectedTechStack;
             }
 
