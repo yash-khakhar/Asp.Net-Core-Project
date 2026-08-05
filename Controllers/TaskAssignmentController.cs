@@ -40,6 +40,17 @@ namespace TraineeManagement.api.Controllers
             return Ok(task);
         }
 
+        [HttpGet("trainee/{traineeId}")]
+        [Authorize(Roles = $"{nameof(UserRolesEnum.ADMIN)}, {nameof(UserRolesEnum.MENTOR)}, {nameof(UserRolesEnum.TRAINEE)}")]
+        public async Task<IActionResult> GetTaskAssignmentByTraineeId(int traineeId)
+        {
+
+            if (traineeId <= 0) throw new InvalidRequest("Invalid Data Input"); 
+
+            List<DetailedTaskAssignmentResponse> taskList = await _taskAssignmentService.GetTaskAssignmentByTraineeId(traineeId);
+            return Ok(taskList);
+        }
+
        
         [HttpPost]
         [Authorize(Roles = $"{nameof(UserRolesEnum.ADMIN)}, {nameof(UserRolesEnum.MENTOR)}")]

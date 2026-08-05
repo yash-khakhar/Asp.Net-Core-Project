@@ -63,11 +63,13 @@ namespace TraineeManagement.api.Redis.Service
 
                 var server = _redisConnection.GetServer(endpoints.First());
                 var db = _redisConnection.GetDatabase();
+
+                var keysToDelete = server.Keys(pattern: pattern).ToArray();
+                if (keysToDelete.Length == 0) return;
                 
-                foreach (var key in server.Keys(pattern: pattern))
-                {
-                    await db.KeyDeleteAsync(key);
-                }
+                await db.KeyDeleteAsync(keysToDelete, CommandFlags.DemandMaster);
+
+                _logger.LogInformation("Successfully deleted {Count} keys matching pattern '{Pattern}'.", keysToDelete.Length, pattern);
                 
             }catch(Exception ex)
             {

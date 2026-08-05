@@ -75,6 +75,7 @@ namespace TraineeManagement.api.Services
 
             // removing all trainee key from cache
             await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
+            await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.AllTrainees}");
 
             return TraineeModel.ToDto(traineeModel);
         }
@@ -90,6 +91,7 @@ namespace TraineeManagement.api.Services
             await _context.SaveChangesAsync();
 
             // removing all trainee key from cache
+            await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.AllTrainees}");
             await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
             await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.SingleTrainee}:{id}");
 
@@ -185,6 +187,7 @@ namespace TraineeManagement.api.Services
 
             await _context.SaveChangesAsync();
 
+            await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.AllTrainees}");
             await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
             await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.SingleTrainee}:{updateTraineeRequest.Id}");
 

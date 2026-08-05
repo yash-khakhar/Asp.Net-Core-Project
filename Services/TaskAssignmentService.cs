@@ -28,12 +28,12 @@ namespace TraineeManagement.api.Services
                 .Select(t => t.DueDate)
                 .FirstOrDefaultAsync();
 
-            if(dueDate == default)
+            if (dueDate == default)
             {
                 throw new NotFoundException("Task not found!");
             }
 
-            if(dueDate < taskAssignment.AssignedDate)
+            if (dueDate < taskAssignment.AssignedDate)
             {
                 throw new InvalidRequest("Task Due Date cannot be before Assigned Date!");
             }
@@ -54,6 +54,7 @@ namespace TraineeManagement.api.Services
 
             // removing all trainee key from cache
             await _redisCacheRepo.RemoveItem(TaskAssignmentCacheKey.AllTaskAssignment);
+            await _redisCacheRepo.RemoveItem($"{TaskAssignmentCacheKey.SingleTaskAssignmnet}:trainee:{taskAssignment.TraineeId}");
 
             return TaskAssignmentModel.ToDto(taskAssignmentModel);
         }
@@ -75,13 +76,13 @@ namespace TraineeManagement.api.Services
                 TaskAssignmentResponse? taskAssignment = await _context.TaskAssignment
                         .Where(t => t.Id == id)
                         .Select(t => new TaskAssignmentResponse(
-                            t.Id, 
-                            t.TraineeId, 
-                            t.MentorId, 
-                            t.TaskId, 
-                            t.AssignedDate, 
-                            t.DueDate, 
-                            t.Status, 
+                            t.Id,
+                            t.TraineeId,
+                            t.MentorId,
+                            t.TaskId,
+                            t.AssignedDate,
+                            t.DueDate,
+                            t.Status,
                             t.Remarks == null ? string.Empty : t.Remarks
                         ))
                         .FirstOrDefaultAsync();
@@ -116,13 +117,13 @@ namespace TraineeManagement.api.Services
                     .Include(t => t.Mentor)
                     .Include(t => t.Task)
                     .Select(t => new TaskAssignmentResponse(
-                        t.Id, 
-                        t.TraineeId, 
-                        t.MentorId, 
-                        t.TaskId, 
-                        t.AssignedDate, 
-                        t.DueDate, 
-                        t.Status, 
+                        t.Id,
+                        t.TraineeId,
+                        t.MentorId,
+                        t.TaskId,
+                        t.AssignedDate,
+                        t.DueDate,
+                        t.Status,
                         t.Remarks == null ? string.Empty : t.Remarks
 
                      ))
@@ -155,8 +156,78 @@ namespace TraineeManagement.api.Services
             // removing all trainee key from cache
             await _redisCacheRepo.RemoveItem(TaskAssignmentCacheKey.AllTaskAssignment);
             await _redisCacheRepo.RemoveItem($"{TaskAssignmentCacheKey.SingleTaskAssignmnet}:{id}");
+            await _redisCacheRepo.RemoveItem($"{TaskAssignmentCacheKey.SingleTaskAssignmnet}:trainee:{taskAssignment.TraineeId}");
 
             return TaskAssignmentModel.ToDto(task);
+        }
+
+        public async Task<List<DetailedTaskAssignmentResponse>> GetTaskAssignmentByTraineeId(int traineeId)
+        {
+            string cacheKey = $"{TaskAssignmentCacheKey.SingleTaskAssignmnet}:trainee:{traineeId}";
+
+            List<DetailedTaskAssignmentResponse>? cachedData = await _redisCacheRepo.GetItem<List<DetailedTaskAssignmentResponse>>(cacheKey);
+
+            if (cachedData != null)
+            {
+                return cachedData;
+            }
+            else
+            {
+
+                List<DetailedTaskAssignmentResponse> taskAssignments = await _context.TaskAssignment
+                    .Where(t => t.TraineeId == traineeId)
+                    .Include(t => t.Trainee)
+                    .Include(t => t.Mentor)
+                    .Include(t => t.Task)
+                    .Select(t => new DetailedTaskAssignmentResponse(
+                        t.Id,
+                        t.TraineeId,
+                        t.MentorId,
+                        t.TaskId,
+                        t.AssignedDate,
+                        t.DueDate,
+                        t.Status,
+                        t.Remarks ?? string.Empty,
+                        new DTO.TraineeDto.TraineeResponse(
+                            t.Trainee!.Id,
+                            t.Trainee.FirstName,
+                            t.Trainee.LastName,
+                            t.Trainee.Email,
+                            t.Trainee.TechStack,
+                            t.Trainee.Status,
+                            t.Trainee.CreatedAt,
+                            t.Trainee.UpdatedAt
+                        ),
+                        new DTO.MentorDto.MentorResponse(
+                            t.Mentor!.Id,
+                            t.Mentor.FirstName,
+                            t.Mentor.LastName,
+                            t.Mentor.Email,
+                            t.Mentor.Expertise,
+                            t.Mentor.Status,
+                            t.Mentor.CreatedAt,
+                            t.Mentor.UpdatedAt
+                        ),
+                        new DTO.Task.TaskResponse(
+                            t.Task!.Id,
+                            t.Task.Title,
+                            t.Task.Description,
+                            t.Task.ExpectedTechStack,
+                            t.Task.DueDate,
+                            t.Task.Status,
+                            t.Task.CreatedAt,
+                            t.Task.UpdatedAt
+                        )
+                    ))
+                .ToListAsync();
+
+                if (taskAssignments == null || taskAssignments.Count == 0) throw new NotFoundException("Task Assignment Not Found");
+
+                await _redisCacheRepo.SetItem<List<DetailedTaskAssignmentResponse>>(cacheKey, taskAssignments);
+
+                return taskAssignments;
+
+            }
         }
     }
 }

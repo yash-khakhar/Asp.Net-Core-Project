@@ -21,14 +21,14 @@ namespace TraineeManagement.api.Services
         public async Task<TaskResponse> AddTask(CreateTaskRequest task)
         {
 
-            if (!task.Title.IsOnlyLetters())
+            if (!task.Title.All(char.IsLetterOrDigit))
             {
-                throw new InvalidRequest("Enter Proper Task Title");
+                throw new InvalidRequest("Task title should contain only Alpha-Numeric Characters");
             }
 
-            if (!task.ExpectedTechStack.IsOnlyLetters())
+            if (!task.ExpectedTechStack.All(char.IsLetterOrDigit))
             {
-                throw new InvalidRequest("Enter Proper Tech Stack");
+                throw new InvalidRequest("TechStack should contain only Alpha-Numeric Characters");
             }
 
             TaskModel taskModel = new TaskModel(

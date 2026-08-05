@@ -146,7 +146,7 @@ namespace TraineeManagement.api.Services
 
                         _context.Trainees.Add(trainee);
                         // remove from redis if user is trainee
-                        await _redisCacheRepo.RemoveByPatternAsync($"{TraineeCacheKey.AllTrainees}*");
+                        await _redisCacheRepo.RemoveItem($"{TraineeCacheKey.AllTrainees}");
                        
                         break;
 
