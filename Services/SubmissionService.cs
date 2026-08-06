@@ -21,7 +21,6 @@ namespace TraineeManagement.api.Services
         private readonly SubmissionFileValidator _submissionFileValidator;
         private readonly IRedisCacheRepo _redisCacheRepo;
         private readonly ILogger<SubmissionService> _logger;
-        private readonly IHttpContextAccessor _httpContextAccessor;
         private readonly IRabbitMqPublisher _rabbitMqPublisher;
 
         public SubmissionService(
@@ -30,7 +29,6 @@ namespace TraineeManagement.api.Services
             SubmissionFileValidator submissionFileValidator,
             IRedisCacheRepo redisCacheRepo,
             ILogger<SubmissionService> logger,
-            IHttpContextAccessor httpContextAccessor,
             IRabbitMqPublisher rabbitMqPublisher
         )
         {
@@ -44,10 +42,7 @@ namespace TraineeManagement.api.Services
 
             _logger = logger;
 
-            _httpContextAccessor = httpContextAccessor;
-
             _rabbitMqPublisher = rabbitMqPublisher;
-
         }
 
         public async Task<SubmissionResponse> AddSubmission(CreateSubmissionRequest submissionRequest, List<IFormFile> files, string correlationId)
@@ -261,7 +256,6 @@ namespace TraineeManagement.api.Services
 
             }
 
-
         }
 
         public async Task<IEnumerable<SubmissionResponse>> GetSubmissionList()
@@ -370,6 +364,25 @@ namespace TraineeManagement.api.Services
             {
                 throw;
             }
+
+        }
+
+        public async Task<List<SubmissionResponse>> GetSubmissionByTaskAssignmentId(int taskAssignmentId)
+        {
+
+            List<SubmissionResponse> submissionResponse = await _context.Submission
+                .Where(s => s.TaskAssignmentId == taskAssignmentId)
+                .Select(s => new SubmissionResponse(
+                    s.Id, 
+                    s.TaskAssignmentId, 
+                    s.SubmissionUrl, 
+                    s.Notes, 
+                    s.SubmittedDate, 
+                    s.Status
+                ))
+                .ToListAsync();
+
+            return submissionResponse;
 
         }
     }

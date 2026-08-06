@@ -24,7 +24,7 @@ namespace TraineeManagement.api.Services
             _logger = logger;
         }
 
-        private async Task<TraineeModel> FindTraineeById(int id)
+        public async Task<TraineeModel> FindTraineeById(int id)
         {
 
             TraineeModel? trainee = await _context.Trainees.FindAsync(id);

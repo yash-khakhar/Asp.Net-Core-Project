@@ -41,6 +41,17 @@ namespace TraineeManagement.api.Controllers
             return Ok(submission);
         }
 
+        [HttpGet("task-assignment/{id}")]
+        [Authorize(Roles = $"{nameof(UserRolesEnum.ADMIN)}, {nameof(UserRolesEnum.MENTOR)}, {nameof(UserRolesEnum.TRAINEE)}")]
+        public async Task<IActionResult> GetSubmissionByTaskAssignmentId(int id)
+        {
+
+            if (id <= 0) throw new InvalidRequest("Invalid Data Input");
+
+            List<SubmissionResponse> submission = await _submissionService.GetSubmissionByTaskAssignmentId(id);
+            return Ok(submission);
+        }
+
 
         [HttpPost]
         [Authorize(Roles = $"{nameof(UserRolesEnum.TRAINEE)}")]

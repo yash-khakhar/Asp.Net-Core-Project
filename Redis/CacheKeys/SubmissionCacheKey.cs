@@ -5,5 +5,6 @@
         public static string AllSubmissions = "submissions:all";
 
         public static string SingleSubmission = "submission";
+
     }
 }
