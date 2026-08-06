@@ -59,12 +59,12 @@ namespace TraineeManagement.api.Services
             return TaskAssignmentModel.ToDto(taskAssignmentModel);
         }
 
-        public async Task<TaskAssignmentResponse> GetTaskAssignmentById(int id)
+        public async Task<DetailedTaskAssignmentResponse> GetTaskAssignmentById(int id)
         {
 
             string cacheKey = $"{TaskAssignmentCacheKey.SingleTaskAssignmnet}:{id}";
 
-            TaskAssignmentResponse? cachedData = await _redisCacheRepo.GetItem<TaskAssignmentResponse>(cacheKey);
+            DetailedTaskAssignmentResponse? cachedData = await _redisCacheRepo.GetItem<DetailedTaskAssignmentResponse>(cacheKey);
 
             if (cachedData != null)
             {
@@ -73,23 +73,56 @@ namespace TraineeManagement.api.Services
             else
             {
 
-                TaskAssignmentResponse? taskAssignment = await _context.TaskAssignment
+                DetailedTaskAssignmentResponse? taskAssignment = await _context.TaskAssignment
                         .Where(t => t.Id == id)
-                        .Select(t => new TaskAssignmentResponse(
-                            t.Id,
-                            t.TraineeId,
-                            t.MentorId,
-                            t.TaskId,
-                            t.AssignedDate,
-                            t.DueDate,
-                            t.Status,
-                            t.Remarks == null ? string.Empty : t.Remarks
-                        ))
+                        .Include(t => t.Trainee)
+                        .Include(t => t.Mentor)
+                        .Include(t => t.Task)
+                        .Select(t => new DetailedTaskAssignmentResponse(
+                        t.Id,
+                        t.TraineeId,
+                        t.MentorId,
+                        t.TaskId,
+                        t.AssignedDate,
+                        t.DueDate,
+                        t.Status,
+                        t.Remarks ?? string.Empty,
+                        new DTO.TraineeDto.TraineeResponse(
+                            t.Trainee!.Id,
+                            t.Trainee.FirstName,
+                            t.Trainee.LastName,
+                            t.Trainee.Email,
+                            t.Trainee.TechStack,
+                            t.Trainee.Status,
+                            t.Trainee.CreatedAt,
+                            t.Trainee.UpdatedAt
+                        ),
+                        new DTO.MentorDto.MentorResponse(
+                            t.Mentor!.Id,
+                            t.Mentor.FirstName,
+                            t.Mentor.LastName,
+                            t.Mentor.Email,
+                            t.Mentor.Expertise,
+                            t.Mentor.Status,
+                            t.Mentor.CreatedAt,
+                            t.Mentor.UpdatedAt
+                        ),
+                        new DTO.Task.TaskResponse(
+                            t.Task!.Id,
+                            t.Task.Title,
+                            t.Task.Description,
+                            t.Task.ExpectedTechStack,
+                            t.Task.DueDate,
+                            t.Task.Status,
+                            t.Task.CreatedAt,
+                            t.Task.UpdatedAt
+                        )
+                    ))
                         .FirstOrDefaultAsync();
 
                 if (taskAssignment == null) throw new NotFoundException("Task Assignment Not Found");
 
-                await _redisCacheRepo.SetItem<TaskAssignmentResponse>(cacheKey, taskAssignment);
+                await _redisCacheRepo.SetItem<DetailedTaskAssignmentResponse>(cacheKey, taskAssignment);
 
                 return taskAssignment;
 

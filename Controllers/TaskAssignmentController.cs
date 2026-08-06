@@ -36,7 +36,7 @@ namespace TraineeManagement.api.Controllers
 
             if (id <= 0) throw new InvalidRequest("Invalid Data Input"); 
 
-            TaskAssignmentResponse task = await _taskAssignmentService.GetTaskAssignmentById(id);
+            DetailedTaskAssignmentResponse task = await _taskAssignmentService.GetTaskAssignmentById(id);
             return Ok(task);
         }
 
